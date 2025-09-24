@@ -699,19 +699,22 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
                                 total_row['Avg'] = round(vals.mean(), 1) if not vals.empty else np.nan   
                         total_row = pd.DataFrame([total_row], index=['Total'])
                         hr_util_df = pd.concat([hr_util_df, total_row])
-                        
-                        def cyl_util_color(val):
-                                if pd.isna(val):
-                                    return ''
-                                if val >= 90:
-                                    color = '#ff4136'  # green
-                                elif val >= 70:
-                                    color = '#ffeb3b'  # yellow
-                                elif val > 50:
-                                    color = '#2ecc40'  # red
-                                else:
-                                    color = "#9893DB"
-                                return f'background-color: {color}'
+    
+                       def cyl_util_color(val):
+                            if pd.isna(val):
+                                return ''
+                            if val >= 90:
+                                color = '#ff4136'  
+                            elif val >= 70:
+                                color = '#ffeb3b'  
+                            elif val > 50:
+                                color = '#2ecc40'  
+                            elif val == 50:
+                                color = "#919291"                              
+                            else:
+                                color = "#9893DB"
+                            return f'background-color: {color}'
+
 
                         col1,col2=st.columns([1,1])
                         col1.caption("Cylinder Utilization (%) per Truck")
