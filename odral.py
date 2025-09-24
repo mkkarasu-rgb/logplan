@@ -700,7 +700,7 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
                         total_row = pd.DataFrame([total_row], index=['Total'])
                         hr_util_df = pd.concat([hr_util_df, total_row])
     
-                       def cyl_util_color(val):
+                        def cyl_util_color(val):
                             if pd.isna(val):
                                 return ''
                             if val >= 90:
@@ -709,7 +709,7 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
                                 color = '#ffeb3b'  
                             elif val > 50:
                                 color = '#2ecc40'  
-                            elif val == 50:
+                            elif val == 0:
                                 color = "#919291"                              
                             else:
                                 color = "#9893DB"
