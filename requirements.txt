@@ -75,7 +75,7 @@ requests==2.32.4
 requests-oauthlib==2.0.0
 rpds-py==0.26.0
 rsa==4.9.1
-ruptures==1.1.9
+git+https://github.com/deepcharles/ruptures.git
 scikit-learn==1.7.1
 scipy==1.16.0
 setuptools==80.9.0
