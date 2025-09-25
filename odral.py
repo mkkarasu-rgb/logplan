@@ -20,6 +20,7 @@ from streamlit.components.v1 import html
 import ast
 from itertools import groupby, permutations
 
+
 st.set_page_config(layout="wide")
 
 speed=50
@@ -327,8 +328,8 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
                 st.toast("Depot data saved!", icon="✅")
 
 
-    run_plan = st.button("Run Planning",type="primary",width="stretch")
-    if run_plan:
+    # run_plan = st.button("Run Planning",type="primary",width="stretch")
+    # if run_plan:
 
         if st.session_state.OdralData_df is not None and st.session_state.cluster_df is not None and not st.session_state.cluster_df.empty:
             st.session_state.OdralData_df["ClusterName"] = st.session_state.OdralData_df.apply( lambda row: get_cluster_name(row["LAT"], row["LON"], st.session_state.cluster_df), axis=1)
@@ -487,9 +488,37 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
                         trip_drop_sum = filtered['Drop/Trip'].sum().round(1)
                         trip_driver_max=filtered['Driver'].max()
                         trip_traffic=filtered['Traffic'].mean().round(1)
+
+                        # Calculate Google Maps driving distance for best_route and assign to TripKm
+                        # gmapsapi="AIzaSyCw6dw7UN52WgKsXZO3Cevx_ymoa8PPd2w"
+                        google_maps_api_key = os.environ.get("AIzaSyCw6dw7UN52WgKsXZO3Cevx_ymoa8PPd2w", None)
+                        google_trip_km = None
+                        if google_maps_api_key and best_route and len(best_route) > 1:
+                            try:
+                                # Prepare waypoints for Google Maps Directions API
+                                origin = f"{best_route[0][0]},{best_route[0][1]}"
+                                destination = f"{best_route[-1][0]},{best_route[-1][1]}"
+                                waypoints = "|".join([f"{lat},{lon}" for lat, lon in best_route[1:-1]])
+                                url = (
+                                    f"https://maps.googleapis.com/maps/api/directions/json?"
+                                    f"origin={origin}&destination={destination}"
+                                )
+                                if waypoints:
+                                    url += f"&waypoints={waypoints}"
+                                url += f"&key={google_maps_api_key}"
+                                response = requests.get(url)
+                                if response.status_code == 200:
+                                    data = response.json()
+                                    if data["status"] == "OK":
+                                        total_meters = sum(leg["distance"]["value"] for route in data["routes"] for leg in route["legs"])
+                                        google_trip_km = np.ceil(total_meters / 1000)
+                            except Exception as e:
+                                google_trip_km = None
+
+                        trip_km_value = google_trip_km if google_trip_km is not None else np.ceil(min_distance * 1.3)
                         trip_results.append({
                             "Trip": trip,
-                            "TripKm": np.ceil(min_distance * 1.3),
+                            "TripKm": trip_km_value,
                             "Cyl/Trip": trip_cyl_sum,
                             "Drop/Trip": trip_drop_sum,                        
                             "Driver": trip_driver_max,
@@ -505,38 +534,38 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
             if trip_data_df is None or trip_data_df.empty:
                 st.info("No trips to display. Please ensure clusters and customers are defined.")
             else:
-                # with st.expander("Trips on the Map", expanded=True):
+                with st.expander("Trips on the Map", expanded=True):
 
-                #     col1, col2 = st.columns([1, 2])
-                # #    ROUTES ARE HERE :) USE AI TO DRAW ON THE MAP
+                    col1, col2 = st.columns([1, 2])
+                #    ROUTES ARE HERE :) USE AI TO DRAW ON THE MAP
 
-                #     col1.dataframe(trip_data_df[['Trip', 'TripKm', 'Cyl/Trip', 'Drop/Trip', 'Driver', 'Traffic']], width='content', height=500, hide_index=True)
-                #     # Ask user to select a Trip and show the route on the map
-                #     if not trip_data_df.empty:
-                #         trip_options = trip_data_df['Trip'].tolist()
-                #         # Use session state to avoid rerun on trip selection
-                #         if "selected_trip" not in st.session_state:
-                #             st.session_state.selected_trip = trip_options[0] if trip_options else None
-                #         selected_trip = col2.selectbox(
-                #             "Select a Trip to view its route",
-                #             trip_options,
-                #             key="selected_trip_selectbox",
-                #             index=trip_options.index(st.session_state.selected_trip) if st.session_state.selected_trip in trip_options else 0
-                #         )
-                #         st.session_state.selected_trip = selected_trip
-                #         selected_route = trip_data_df.loc[trip_data_df['Trip'] == selected_trip, 'Route'].values[0]
-                #         if selected_route:
-                #             depot_lat, depot_lon = selected_route[0]
-                #             route_map = folium.Map(location=[depot_lat, depot_lon], zoom_start=7)
-                #             folium.PolyLine(selected_route, color="red", weight=4, opacity=0.8).add_to(route_map)
-                #             for idx, (lat, lon) in enumerate(selected_route):
-                #                 if idx == 0 or idx == len(selected_route) - 1:
-                #                     folium.Marker([lat, lon], popup="Depot", icon=folium.Icon(color="blue")).add_to(route_map)
-                #                 else:
-                #                     folium.Marker([lat, lon], popup=f"Stop {idx}", icon=folium.Icon(color="green")).add_to(route_map)
-                #             with col2:
-                #                 html_map = route_map._repr_html_()
-                #                 html(html_map, height=400, width=1000)
+                    col1.dataframe(trip_data_df[['Trip', 'TripKm', 'Cyl/Trip', 'Drop/Trip', 'Driver', 'Traffic']], width='content', height=500, hide_index=True)
+                    # Ask user to select a Trip and show the route on the map
+                    if not trip_data_df.empty:
+                        trip_options = trip_data_df['Trip'].tolist()
+                        # Use session state to avoid rerun on trip selection
+                        if "selected_trip" not in st.session_state:
+                            st.session_state.selected_trip = trip_options[0] if trip_options else None
+                        selected_trip = col2.selectbox(
+                            "Select a Trip to view its route",
+                            trip_options,
+                            key="selected_trip_selectbox",
+                            index=trip_options.index(st.session_state.selected_trip) if st.session_state.selected_trip in trip_options else 0
+                        )
+                        st.session_state.selected_trip = selected_trip
+                        selected_route = trip_data_df.loc[trip_data_df['Trip'] == selected_trip, 'Route'].values[0]
+                        if selected_route:
+                            depot_lat, depot_lon = selected_route[0]
+                            route_map = folium.Map(location=[depot_lat, depot_lon], zoom_start=7)
+                            folium.PolyLine(selected_route, color="red", weight=4, opacity=0.8).add_to(route_map)
+                            for idx, (lat, lon) in enumerate(selected_route):
+                                if idx == 0 or idx == len(selected_route) - 1:
+                                    folium.Marker([lat, lon], popup="Depot", icon=folium.Icon(color="blue")).add_to(route_map)
+                                else:
+                                    folium.Marker([lat, lon], popup=f"Stop {idx}", icon=folium.Icon(color="green")).add_to(route_map)
+                            with col2:
+                                html_map = route_map._repr_html_()
+                                html(html_map, height=400, width=1000)
 
                 # Join TripKm, Cyl/Trip, Drop/Trip and Traffic from trip_data_df to TripPlan for each day
                 for col_prefix, trip_col in [
