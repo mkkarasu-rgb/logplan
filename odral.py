@@ -32,8 +32,8 @@ if 'depot_selection' not in st.session_state:
 if 'uploaded_flag' not in st.session_state:
     st.session_state['uploaded_flag'] = 0
 
-if 'AllCusts' not in st.session_state:
-    st.session_state['AllCusts'] = None
+if 'AllCusts_edited' not in st.session_state:
+    st.session_state['AllCusts_edited'] = None    
 
 if 'OdralData_edited' not in st.session_state:
     st.session_state['OdralData_edited'] = None
@@ -89,9 +89,9 @@ with st.expander("File Upload",expanded=True):
             st.rerun()
 
     DepotData = st.session_state.get("DepotData")
-    depot_options = DepotData['DEPOT'].unique() if DepotData is not None else []
+    depot_options = ['Select'] + list(DepotData['DEPOT'].unique()) if DepotData is not None else ['Select']
     col7.text('Step4: Depot')
-    selected_depot = col7.selectbox("Select Depot", options=depot_options, key="depotselection",label_visibility="collapsed")
+    selected_depot = col7.selectbox("Select Depot", options=depot_options, index=0, key="depotselection",label_visibility="collapsed")
     st.session_state['depot_selection'] = selected_depot
 
     if uploaded_file is not None:
@@ -113,24 +113,26 @@ with st.expander("File Upload",expanded=True):
 
 if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('depot_selection', None) is not None:
 
-    OdralData=st.session_state.get("OdralData") # original data coming in the file
-    if (
-        st.session_state.OdralData_edited is not None and
-        st.session_state.depot_selection is not None and
-        'DEPOT' in st.session_state.OdralData_edited.columns and
-        not st.session_state.OdralData_edited[st.session_state.OdralData_edited['DEPOT'] == st.session_state.depot_selection].empty
-    ):
-        st.session_state.OdralData_df = st.session_state.OdralData_edited
-    else:
-        st.session_state.OdralData_df = OdralData[OdralData['DEPOT'] == st.session_state.depot_selection].copy() if OdralData is not None and st.session_state.depot_selection is not None and 'DEPOT' in OdralData.columns else pd.DataFrame()
-
     with st.expander("Customer Data (Editable for Simulation)", expanded=True):
+
+        # All customers
+        if (st.session_state.AllCusts_edited is not None and not st.session_state.AllCusts_edited.empty):
+            st.session_state.AllCusts_df = st.session_state.AllCusts_edited
+        else:
+            st.session_state.AllCusts_df = st.session_state.get("OdralData").copy() # original data coming in the file
+
         with st.form("Customer_Data_form"):
-            st.session_state.OdralData_edited = st.data_editor(st.session_state.OdralData_df.sort_values(by="Demand", ascending=False), width='stretch', hide_index=True)
+            AllCusts_edited = st.data_editor(st.session_state.AllCusts_df.sort_values(by="Demand", ascending=False), width='stretch', hide_index=True)
             submitted = st.form_submit_button("Save Customer Data", type="primary")
-            if submitted:
-                st.session_state.OdralData_df = st.session_state.OdralData_edited
+            if submitted:              
+                st.session_state.AllCusts_edited = AllCusts_edited
+                st.rerun()
                 st.toast("Customer data saved!", icon="✅")
+
+    # Filtered Customers by depot
+    OdralData=st.session_state.AllCusts_df # original data coming in the file
+    st.session_state.OdralData_df = OdralData[OdralData['DEPOT'] == st.session_state.depot_selection].copy() if OdralData is not None and st.session_state.depot_selection is not None and 'DEPOT' in OdralData.columns else pd.DataFrame()
+
 
 
     with st.expander("Cluster Mapping", expanded=True):
@@ -138,8 +140,6 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
         # ------------------------------------------------------------------------------------------------------------------------
         # Prepare the map with customers and drawing tools
         # ------------------------------------------------------------------------------------------------------------------------
-
-        AllCusts=st.session_state.get("OdralData").copy()
         
         ClusterData=st.session_state.get("ClusterData") # original data coming in the file
         if (
@@ -157,11 +157,11 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
         else:
             st.session_state.cluster_list = []
 
-        if AllCusts is not None:
+        if st.session_state.AllCusts_df is not None:
             # Ensure required columns exist
             required_columns = {'LAT', 'LON', 'DEPOT'}
-            if not required_columns.issubset(AllCusts.columns):
-                st.error(f"Missing columns in data: {required_columns - set(AllCusts.columns)}")
+            if not required_columns.issubset(st.session_state.AllCusts_df.columns):
+                st.error(f"Missing columns in data: {required_columns - set(st.session_state.AllCusts_df.columns)}")
             else:
                 # Create a folium map centered on the mean location
                 center_lat = 38.821866877802435
@@ -169,12 +169,12 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
                 m = folium.Map(location=[center_lat, center_lon], zoom_start=6)
 
                 # Assign a color to each unique DEPOT
-                depots = AllCusts['DEPOT'].unique()
+                depots = st.session_state.AllCusts_df['DEPOT'].unique()
                 colors = px.colors.qualitative.Plotly
                 depot_color_map = {depot: colors[i % len(colors)] for i, depot in enumerate(depots)}
 
                 # Add customer markers
-                for _, row in AllCusts.iterrows():
+                for _, row in st.session_state.AllCusts_df.iterrows():
                     popup_html = f"""
                     <b>Depot:</b> {row['DEPOT']}<br>
                     <b>CustNo:</b> {row['CUST_NO']}<br>
@@ -278,7 +278,7 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
             submitted = col2.form_submit_button("Save Clusters",type="primary")
 
             if submitted:
-                st.toast("Clusters saved!", icon="✅")
+                st.toast("Clusters saved!", icon="✅") # A FORM IS USED JUST TO KEEP THIS PART INACTIVE DURING CLUSTER DRAWING AND FORM REQUIRES A BUTTON 
 
             
 
@@ -327,8 +327,8 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
                 st.toast("Depot data saved!", icon="✅")
 
 
-    run_plan = st.button("Run Planning",type="primary",width="stretch")
-    if run_plan:
+    # run_plan = st.button("Run Planning",type="primary",width="stretch")
+    # if run_plan:
 
         if st.session_state.OdralData_df is not None and st.session_state.cluster_df is not None and not st.session_state.cluster_df.empty:
             st.session_state.OdralData_df["ClusterName"] = st.session_state.OdralData_df.apply( lambda row: get_cluster_name(row["LAT"], row["LON"], st.session_state.cluster_df), axis=1)
@@ -505,29 +505,38 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
             if trip_data_df is None or trip_data_df.empty:
                 st.info("No trips to display. Please ensure clusters and customers are defined.")
             else:
-                # with st.expander("Trips on the Map", expanded=True):
+                with st.expander("Trips on the Map", expanded=True):
 
-                #     col1, col2 = st.columns([1, 2])
-                ##    ROUTES ARE HERE :) USE AI TO DRAW ON THE MAP
+                    col1, col2 = st.columns([1, 2])
+                #    ROUTES ARE HERE :) USE AI TO DRAW ON THE MAP
 
-                #     col1.dataframe(trip_data_df[['Trip', 'TripKm', 'Cyl/Trip', 'Drop/Trip', 'Driver', 'Traffic']], width='content', height=500, hide_index=True)
-                #     # Ask user to select a Trip and show the route on the map
-                #     if not trip_data_df.empty:
-                #         trip_options = trip_data_df['Trip'].tolist()
-                #         selected_trip = col2.selectbox("Select a Trip to view its route", trip_options)
-                #         selected_route = trip_data_df.loc[trip_data_df['Trip'] == selected_trip, 'Route'].values[0]
-                #         if selected_route:
-                #             depot_lat, depot_lon = selected_route[0]
-                #             route_map = folium.Map(location=[depot_lat, depot_lon], zoom_start=7)
-                #             folium.PolyLine(selected_route, color="red", weight=4, opacity=0.8).add_to(route_map)
-                #             for idx, (lat, lon) in enumerate(selected_route):
-                #                 if idx == 0 or idx == len(selected_route) - 1:
-                #                     folium.Marker([lat, lon], popup="Depot", icon=folium.Icon(color="blue")).add_to(route_map)
-                #                 else:
-                #                     folium.Marker([lat, lon], popup=f"Stop {idx}", icon=folium.Icon(color="green")).add_to(route_map)
-                #             with col2:
-                #                 html_map = route_map._repr_html_()
-                #                 html(html_map, height=400, width=1000)
+                    col1.dataframe(trip_data_df[['Trip', 'TripKm', 'Cyl/Trip', 'Drop/Trip', 'Driver', 'Traffic']], width='content', height=500, hide_index=True)
+                    # Ask user to select a Trip and show the route on the map
+                    if not trip_data_df.empty:
+                        trip_options = trip_data_df['Trip'].tolist()
+                        # Use session state to avoid rerun on trip selection
+                        if "selected_trip" not in st.session_state:
+                            st.session_state.selected_trip = trip_options[0] if trip_options else None
+                        selected_trip = col2.selectbox(
+                            "Select a Trip to view its route",
+                            trip_options,
+                            key="selected_trip_selectbox",
+                            index=trip_options.index(st.session_state.selected_trip) if st.session_state.selected_trip in trip_options else 0
+                        )
+                        st.session_state.selected_trip = selected_trip
+                        selected_route = trip_data_df.loc[trip_data_df['Trip'] == selected_trip, 'Route'].values[0]
+                        if selected_route:
+                            depot_lat, depot_lon = selected_route[0]
+                            route_map = folium.Map(location=[depot_lat, depot_lon], zoom_start=7)
+                            folium.PolyLine(selected_route, color="red", weight=4, opacity=0.8).add_to(route_map)
+                            for idx, (lat, lon) in enumerate(selected_route):
+                                if idx == 0 or idx == len(selected_route) - 1:
+                                    folium.Marker([lat, lon], popup="Depot", icon=folium.Icon(color="blue")).add_to(route_map)
+                                else:
+                                    folium.Marker([lat, lon], popup=f"Stop {idx}", icon=folium.Icon(color="green")).add_to(route_map)
+                            with col2:
+                                html_map = route_map._repr_html_()
+                                html(html_map, height=400, width=1000)
 
                 # Join TripKm, Cyl/Trip, Drop/Trip and Traffic from trip_data_df to TripPlan for each day
                 for col_prefix, trip_col in [
@@ -699,7 +708,7 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
                                 total_row['Avg'] = round(vals.mean(), 1) if not vals.empty else np.nan   
                         total_row = pd.DataFrame([total_row], index=['Total'])
                         hr_util_df = pd.concat([hr_util_df, total_row])
-    
+                        
                         def cyl_util_color(val):
                             if pd.isna(val):
                                 return ''
@@ -714,7 +723,6 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
                             else:
                                 color = "#9893DB"
                             return f'background-color: {color}'
-
 
                         col1,col2=st.columns([1,1])
                         col1.caption("Cylinder Utilization (%) per Truck")
@@ -781,3 +789,6 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
                     truck_summary = pd.concat([truck_summary, pd.DataFrame([total_row])], ignore_index=True)
                     truck_summary['Cost/Cyl']= (truck_summary['MONTHLY_COST'] / truck_summary['MonthCyl']).replace([np.inf, -np.inf], 0).round(2)
                     st.dataframe(truck_summary, width='content',height=400,hide_index=True)
+        
+
+    
