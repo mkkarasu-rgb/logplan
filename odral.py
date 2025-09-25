@@ -409,7 +409,7 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
             TripPlan['unique'] = TripPlan[trip_day_cols].apply(
                 lambda row: ','.join(sorted({v for v in row if pd.notna(v) and v != ''})), axis=1
             )
-            TripPlan['ClusterName'] = TripPlan.apply( lambda row: row['unique'] if ',' not in row['unique'] and row['unique'] != '' else row.get('ClusterName', ''), axis=1 )
+            TripPlan['ClusterName'] = TripPlan.apply(lambda row: row['unique'] if ',' not in str(row['unique']) and str(row['unique']) != '' else row.get('ClusterName', ''), axis=1)
             TripPlan = TripPlan[TripPlan['unique'] != ''].reset_index(drop=True)
             TripPlan = TripPlan.drop(columns=['unique'])
             # TripPlan # CONTROL QUERY
