@@ -330,8 +330,8 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
                 st.toast("Depot data saved!", icon="✅")
 
 
-    # run_plan = st.button("Run Planning",type="primary",width="stretch")
-    # if run_plan:
+    run_plan = st.button("Run Planning",type="primary",width="stretch")
+    if run_plan:
 
         if st.session_state.OdralData_df is not None and st.session_state.cluster_df is not None and not st.session_state.cluster_df.empty:
             st.session_state.OdralData_df["ClusterName"] = st.session_state.OdralData_df.apply( lambda row: get_cluster_name(row["LAT"], row["LON"], st.session_state.cluster_df), axis=1)
