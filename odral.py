@@ -1,5 +1,6 @@
 import time
 import folium.map
+import googlemaps
 import pandas as pd
 import numpy as np
 import streamlit as st
@@ -19,6 +20,7 @@ from streamlit_folium import st_folium
 from streamlit.components.v1 import html
 import ast
 from itertools import groupby, permutations
+import googlemaps
 
 
 st.set_page_config(layout="wide")
@@ -490,10 +492,10 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
                         trip_traffic=filtered['Traffic'].mean().round(1)
 
                         # Calculate Google Maps driving distance for best_route and assign to TripKm
-                        # gmapsapi="AIzaSyCw6dw7UN52WgKsXZO3Cevx_ymoa8PPd2w"
-                        google_maps_api_key = os.environ.get("AIzaSyCw6dw7UN52WgKsXZO3Cevx_ymoa8PPd2w", None)
+    
+                        gmaps = googlemaps.Client(key=st.secrets["gmapsapi"])
                         google_trip_km = None
-                        if google_maps_api_key and best_route and len(best_route) > 1:
+                        if gmaps and best_route and len(best_route) > 1:
                             try:
                                 # Prepare waypoints for Google Maps Directions API
                                 origin = f"{best_route[0][0]},{best_route[0][1]}"
@@ -503,9 +505,10 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
                                     f"https://maps.googleapis.com/maps/api/directions/json?"
                                     f"origin={origin}&destination={destination}"
                                 )
+                                
                                 if waypoints:
                                     url += f"&waypoints={waypoints}"
-                                url += f"&key={google_maps_api_key}"
+                                url += f"&key={st.secrets["gmapsapi"]}"
                                 response = requests.get(url)
                                 if response.status_code == 200:
                                     data = response.json()
