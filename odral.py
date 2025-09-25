@@ -307,7 +307,7 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
 
     with st.expander("Cluster Data (Editable for Simulation)", expanded=True):
         with st.form("cluster_data_form"):
-            st.session_state.ClusterData_edited = st.data_editor(st.session_state.ClusterData_df, width='content', hide_index=True)
+            st.session_state.ClusterData_edited = st.data_editor(st.session_state.ClusterData_df, width='content', hide_index=True,num_rows="dynamic")
             submitted = st.form_submit_button("Save Cluster Data", type="primary")
             if submitted:
                 st.session_state.ClusterData_df = st.session_state.ClusterData_edited
@@ -315,7 +315,7 @@ if st.session_state.get('uploaded_flag', 0) == True and st.session_state.get('de
                 
     with st.expander("Truck Data (Editable for Simulation)", expanded=True):
         with st.form("truck_data_form"):
-            st.session_state.TruckData_edited = st.data_editor(st.session_state.TruckData_df, width='content', hide_index=True)
+            st.session_state.TruckData_edited = st.data_editor(st.session_state.TruckData_df, width='content', hide_index=True,num_rows="dynamic")
             submitted = st.form_submit_button("Save Truck Data", type="primary")
             if submitted:
                 st.session_state.TruckData_df = st.session_state.TruckData_edited
